@@ -98,7 +98,7 @@ const Globe = () => {
                 material.map = texture;
                 material.needsUpdate = true;
             };
-            img.src = '/world-map.svg';
+            img.src = '/world-map.png';
         };
 
         loadTexture();
