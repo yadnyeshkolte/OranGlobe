@@ -5,6 +5,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 const Globe = () => {
     const mountRef = useRef(null);
     const [selectedCountry, setSelectedCountry] = useState(null);
+    const [loadError, setLoadError] = useState(null);
     const controlsRef = useRef(null);
     const sphereRef = useRef(null);
     const rendererRef = useRef(null);
@@ -50,8 +51,7 @@ const Globe = () => {
         });
 
         const sphere = new THREE.Mesh(geometry, material);
-        // Rotate the sphere to align with standard map coordinates
-        sphere.rotation.y = Math.PI; // Rotate 180 degrees around Y axis
+        sphere.rotation.y = Math.PI;
         sphereRef.current = sphere;
         scene.add(sphere);
 
@@ -63,22 +63,20 @@ const Globe = () => {
         pointLight.position.set(5, 3, 5);
         scene.add(pointLight);
 
-        // Load texture from SVG
+        // Load texture with better error handling
         const loadTexture = () => {
             const img = new Image();
+
             img.onload = () => {
+                console.log('Image loaded successfully');
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
+                canvas.width = 2048;
+                canvas.height = 1024;
 
-                // Set canvas size to power of 2 for better texture mapping
-                canvas.width = 2048;  // 2^11
-                canvas.height = 1024; // 2^10
-
-                // Fill background
                 ctx.fillStyle = '#4477AA';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                // Draw the image maintaining aspect ratio
                 const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
                 const x = (canvas.width - img.width * scale) / 2;
                 const y = (canvas.height - img.height * scale) / 2;
@@ -86,19 +84,50 @@ const Globe = () => {
                 ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
 
                 const texture = new THREE.CanvasTexture(canvas);
-                // Set texture wrapping
                 texture.wrapS = THREE.RepeatWrapping;
                 texture.wrapT = THREE.ClampToEdgeWrapping;
                 texture.repeat.x = 1;
-
-                // Set texture filtering
                 texture.minFilter = THREE.LinearFilter;
                 texture.magFilter = THREE.LinearFilter;
 
                 material.map = texture;
                 material.needsUpdate = true;
+                setLoadError(null);
             };
-            img.src = '/world-map.png';
+
+            img.onerror = (error) => {
+                console.error('Error loading image:', error);
+                setLoadError('Failed to load map texture');
+            };
+
+            // Try multiple paths - adjust these based on your actual file structure
+            const imagePaths = [
+
+                './world-map.png'
+
+
+            ];
+
+            // Function to try loading the next path
+            const tryNextPath = (pathIndex) => {
+                if (pathIndex >= imagePaths.length) {
+                    setLoadError('Could not load map texture from any path');
+                    return;
+                }
+
+                img.src = imagePaths[pathIndex];
+                console.log('Trying to load image from:', imagePaths[pathIndex]);
+
+                // If this path fails, try the next one after a short delay
+                setTimeout(() => {
+                    if (!img.complete || img.naturalWidth === 0) {
+                        tryNextPath(pathIndex + 1);
+                    }
+                }, 1000);
+            };
+
+            // Start trying paths
+            tryNextPath(0);
         };
 
         loadTexture();
@@ -167,7 +196,6 @@ const Globe = () => {
         const canvas = texture.image;
         const ctx = canvas.getContext('2d');
 
-        // Draw an orange circle at the clicked position
         const x = u * canvas.width;
         const y = v * canvas.height;
         ctx.fillStyle = '#FFA500';
@@ -183,6 +211,11 @@ const Globe = () => {
             {selectedCountry && (
                 <div className="absolute top-4 left-4 bg-white p-2 rounded shadow">
                     Selected: {selectedCountry}
+                </div>
+            )}
+            {loadError && (
+                <div className="absolute top-4 right-4 bg-red-500 text-white p-2 rounded shadow">
+                    {loadError}
                 </div>
             )}
         </div>
