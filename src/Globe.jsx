@@ -103,7 +103,7 @@ const Globe = () => {
             // Try multiple paths - adjust these based on your actual file structure
             const imagePaths = [
 
-                './world-map.png'
+                './World_map_with_antarctic_circle.svg'
 
 
             ];
